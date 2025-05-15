@@ -11,6 +11,8 @@
 #define I2C_HZ 100000
 
 #define AHT10_I2C_ADDR 0x38
+#define AHT10_I2C_INIT 0xE1 //
+#define AHT10_I2C_CALIBR 0x08 // 
 
 static const char* TAG = "AHT10";
 
@@ -29,6 +31,7 @@ esp_err_t i2c_init(i2c_config_t *i2c_config_out) {
         ESP_LOGI(TAG, "i2c_param_config failed: %s", esp_err_to_name(err));
         return err;
     }
+    ESP_LOGI(TAG, "i2c_param_config is ok");
     
     err = i2c_driver_install(I2C_NUM_0, i2c_congfig.mode, 0, 0, 0);
     if (err != ESP_OK) {
@@ -40,11 +43,19 @@ esp_err_t i2c_init(i2c_config_t *i2c_config_out) {
 }
 
 esp_err_t aht10_init() {
-
-    esp_err_t err = i2c_master_write_to_device(I2C_NUM_0, AHT10_I2C_ADDR)
+    uint8_t init_cmd[] = {AHT10_I2C_INIT, AHT10_I2C_CALIBR, 0x00};
+    esp_err_t err = i2c_master_write_to_device(
+        I2C_NUM_0,
+        AHT10_I2C_ADDR,
+        init_cmd,
+        sizeof(init_cmd),
+        1000 / portTICK_PERIOD_MS
+    );
     
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "I2C init failed: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "aht10 init failed: %s", esp_err_to_name(err));
         return err;
     }
 
@@ -53,6 +64,23 @@ esp_err_t aht10_init() {
 
 void app_main() {
     i2c_config_t i2c_congfig;
-    i2c_init(&i2c_congfig);
-    aht10_init();
+    esp_err_t i2c_err = i2c_init(&i2c_congfig);
+    if (i2c_err != ESP_OK) {
+        ESP_LOGE(TAG, "i2c init failed");
+        return;
+    }
+
+    esp_err_t aht10_err = aht10_init();
+    if (aht10_err != ESP_OK) {
+        ESP_LOGE(TAG, "i2c init failed: %s", esp_err_to_name(aht10_err));
+        return;
+    }
+
+    ESP_LOGI(TAG, "Connect is ok");
+    // while (true)
+    // {
+        // float humidity = 0.0;
+        // float temperature = 0.0;
+    // }
+    
 }

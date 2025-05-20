@@ -2,7 +2,7 @@
 #include "driver/i2c.h"
 #include "esp_log.h"
 
-#define I2C_PORT I2C_NUM_0  //
+#define I2C_PORT I2C_NUM_0
 #define I2C_MODE I2C_MODE_MASTER
 #define I2C_NUM_SDA 33
 #define I2C_NUM_SDL 34
@@ -10,7 +10,6 @@
 
 #define AHT10_I2C_ADDR 0x38
 #define AHT10_I2C_INIT 0xE1 
-#define AHT10_I2C_CALIBR 0x08 //
 #define AHT10_I2C_MEASURE 0xAC  
 
 static const char* TAG = "AHT10";
@@ -42,7 +41,7 @@ esp_err_t i2c_init(i2c_config_t *i2c_config_out) {
 }
 
 esp_err_t aht10_init() {
-    uint8_t init_cmd[] = {AHT10_I2C_INIT, AHT10_I2C_CALIBR, 0x00}; //
+    uint8_t init_cmd[] = {AHT10_I2C_INIT, 0x33, 0x00}; 
     esp_err_t err = i2c_master_write_to_device(
         I2C_NUM_0,
         AHT10_I2C_ADDR,
@@ -82,14 +81,20 @@ esp_err_t aht10_measure() {
         I2C_NUM_0,
         AHT10_I2C_ADDR,
         data,
-        sizeof(datai2c_master_write_to_deviceESP_OK) {
+        sizeof(data),
+        1000 / portTICK_PERIOD_MS
+    );
+
+    if (data_err != ESP_OK)
+    {
         ESP_LOGE(TAG, "aht10 get data failed: %s", esp_err_to_name(data_err));
         return data_err;
     }
+
     vTaskDelay(100 / portTICK_PERIOD_MS);
- 
-    uint32_t raw_humidity = (data[1] << 12) | (data[2] << 4) | (data[3] >> 4); //
-    uint32_t raw_temperature = ((data[3] & 0x0F) << 16) | (data[4] << 8) | data[5]; //
+
+    uint32_t raw_humidity = (data[1] << 12) | (data[2] << 4) | (data[3] >> 4); 
+    uint32_t raw_temperature = ((data[3] & 0x0F) << 16) | (data[4] << 8) | data[5]; 
 
     float humidity = ((float)raw_humidity / 1048576.0) * 100.0;
     float temperature = ((float)raw_temperature / 1048576.0) * 200.0 - 50.0;
